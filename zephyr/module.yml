@@ -1,4 +1,7 @@
+name: icm20948
+
 build:
   cmake: .
   kconfig: Kconfig
-  dts_root: dts
+  settings:
+    dts_root: .
