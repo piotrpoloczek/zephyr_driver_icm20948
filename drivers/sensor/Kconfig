@@ -1,1 +1,1 @@
-rsource "hx711/Kconfig"
+rsource "icm20948/Kconfig"
