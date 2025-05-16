@@ -1,3 +1,4 @@
+// icm20948.c
 #define DT_DRV_COMPAT invensense_icm20948
 
 #include "icm20948.h"
@@ -12,8 +13,11 @@ static int icm20948_sample_fetch(const struct device *dev, enum sensor_channel c
     struct icm20948_data *data = dev->data;
     const struct icm20948_config *cfg = dev->config;
 
+    // Switch to user bank 0 to access accel data registers
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);
+
     uint8_t buf[6];
-    if (i2c_burst_read_dt(&cfg->i2c, 0x3B, buf, 6) < 0) {
+    if (i2c_burst_read_dt(&cfg->i2c, 0x2D, buf, 6) < 0) {
         LOG_ERR("Failed to read accel data");
         return -EIO;
     }
@@ -57,37 +61,20 @@ static int icm20948_init(const struct device *dev)
         return -ENODEV;
     }
 
-    // Switch to bank 0
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);
-
-    // Reset device
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x80);  // PWR_MGMT_1 = reset
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00); // Bank 0
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x80); // Reset
     k_msleep(100);
-
-    // Wake up and set clock source
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x01);  // Auto select best clock
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x01); // Clock auto select
     k_msleep(10);
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x07, 0x00); // Enable all sensors
 
-    // Enable all sensors (accelerometer + gyro)
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x07, 0x00);  // PWR_MGMT_2 = enable all
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x20); // Bank 2
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x14, 0x09); // ACCEL_CONFIG (2g, DLPF)
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00); // ACCEL_SMPLRT_DIV_1
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x01); // ACCEL_SMPLRT_DIV_2
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x09, 0x01); // ODR_ALIGN_EN
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00); // Back to Bank 0
 
-    // Switch to bank 2
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x20);
-
-    // Set accelerometer range = ±2g and DLPF = 6
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x14, 0x09);  // ACCEL_CONFIG
-
-    // Set accel sample rate divider to 1 (1kHz base / (1 + divider))
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00);  // ACCEL_SMPLRT_DIV_1
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x01);  // ACCEL_SMPLRT_DIV_2
-
-    // Align ODR
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x09, 0x01);  // ODR_ALIGN_EN
-
-    // Back to bank 0
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);
-
-    // Check WHO_AM_I
     if (i2c_reg_read_byte_dt(&cfg->i2c, 0x00, &whoami) < 0) {
         LOG_ERR("Failed to read WHO_AM_I");
         return -EIO;
@@ -98,11 +85,9 @@ static int icm20948_init(const struct device *dev)
         return -EINVAL;
     }
 
-    LOG_INF("ICM20948 initialized successfully (WHO_AM_I = 0x%02X)", whoami);
+    LOG_INF("ICM20948 initialized (WHO_AM_I=0x%02X)", whoami);
     return 0;
 }
-
-
 
 static const struct sensor_driver_api icm20948_api = {
     .sample_fetch = icm20948_sample_fetch,
@@ -113,11 +98,11 @@ static const struct sensor_driver_api icm20948_api = {
     static struct icm20948_data icm20948_data_##inst;                         \
     static const struct icm20948_config icm20948_config_##inst = {           \
         .i2c = I2C_DT_SPEC_INST_GET(inst),                                    \
-    };                                                                         \
-    DEVICE_DT_INST_DEFINE(inst,                                               \
-                          icm20948_init, NULL,                                \
-                          &icm20948_data_##inst, &icm20948_config_##inst,     \
-                          POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,           \
+    };                                                                        \
+    DEVICE_DT_INST_DEFINE(inst,                                              \
+                          icm20948_init, NULL,                               \
+                          &icm20948_data_##inst, &icm20948_config_##inst,    \
+                          POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,          \
                           &icm20948_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ICM20948_INIT)
