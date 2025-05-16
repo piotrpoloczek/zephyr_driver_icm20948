@@ -1,7 +1,5 @@
 description: ICM20948 9-axis motion sensor
-
 compatible: "invensense,icm20948"
-
 include: ["i2c-device.yaml"]
 
 properties:
