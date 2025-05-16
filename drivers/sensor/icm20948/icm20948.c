@@ -56,15 +56,47 @@ static int icm20948_init(const struct device *dev)
         return -ENODEV;
     }
 
-    // Wake up the sensor
-    uint8_t pwr_mgmt_1[] = {0x06, 0x01};  // PWR_MGMT_1 = 0x01
-    if (i2c_write_dt(&cfg->i2c, pwr_mgmt_1, sizeof(pwr_mgmt_1)) < 0) {
-        LOG_ERR("Failed to write PWR_MGMT_1");
+    // Switch to bank 0
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);
+
+    // Reset the device
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x80);  // PWR_MGMT_1 = RESET
+    k_msleep(100);
+
+    // Wake up and auto-select best clock
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x01);  // PWR_MGMT_1 = Clock Auto
+    k_msleep(10);
+
+    // Switch to bank 2 to configure accelerometer
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x20);  // REG_BANK_SEL = 2 << 4
+
+    // Set ACCEL_CONFIG: range = ±2g (default), DLPF enabled, DLPF = 6
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x14, 0x09);  // ACCEL_CONFIG
+
+    // Set ACCEL_SMPLRT_DIV
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00);  // DIV_1
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x01);  // DIV_2
+
+    // Enable accelerometer and gyroscope in bank 0
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);  // REG_BANK_SEL = 0
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x07, 0x00);  // PWR_MGMT_2 = enable all
+
+    // Check WHO_AM_I
+    uint8_t whoami = 0;
+    if (i2c_reg_read_byte_dt(&cfg->i2c, 0x00, &whoami) < 0) {
+        LOG_ERR("Failed to read WHO_AM_I");
         return -EIO;
     }
 
+    if (whoami != 0xEA) {
+        LOG_ERR("Unexpected WHO_AM_I: 0x%02X", whoami);
+        return -EINVAL;
+    }
+
+    LOG_INF("ICM20948 initialized successfully (WHO_AM_I = 0x%X)", whoami);
     return 0;
 }
+
 
 static const struct sensor_driver_api icm20948_api = {
     .sample_fetch = icm20948_sample_fetch,
