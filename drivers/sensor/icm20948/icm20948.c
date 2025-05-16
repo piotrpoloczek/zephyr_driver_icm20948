@@ -50,6 +50,7 @@ static int icm20948_channel_get(const struct device *dev, enum sensor_channel ch
 static int icm20948_init(const struct device *dev)
 {
     const struct icm20948_config *cfg = dev->config;
+    uint8_t whoami = 0;
 
     if (!device_is_ready(cfg->i2c.bus)) {
         LOG_ERR("I2C bus not ready");
@@ -59,30 +60,34 @@ static int icm20948_init(const struct device *dev)
     // Switch to bank 0
     i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);
 
-    // Reset the device
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x80);  // PWR_MGMT_1 = RESET
+    // Reset device
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x80);  // PWR_MGMT_1 = reset
     k_msleep(100);
 
-    // Wake up and auto-select best clock
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x01);  // PWR_MGMT_1 = Clock Auto
+    // Wake up and set clock source
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x06, 0x01);  // Auto select best clock
     k_msleep(10);
 
-    // Switch to bank 2 to configure accelerometer
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x20);  // REG_BANK_SEL = 2 << 4
-
-    // Set ACCEL_CONFIG: range = ±2g (default), DLPF enabled, DLPF = 6
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x14, 0x09);  // ACCEL_CONFIG
-
-    // Set ACCEL_SMPLRT_DIV
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00);  // DIV_1
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x01);  // DIV_2
-
-    // Enable accelerometer and gyroscope in bank 0
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);  // REG_BANK_SEL = 0
+    // Enable all sensors (accelerometer + gyro)
     i2c_reg_write_byte_dt(&cfg->i2c, 0x07, 0x00);  // PWR_MGMT_2 = enable all
 
+    // Switch to bank 2
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x20);
+
+    // Set accelerometer range = ±2g and DLPF = 6
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x14, 0x09);  // ACCEL_CONFIG
+
+    // Set accel sample rate divider to 1 (1kHz base / (1 + divider))
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00);  // ACCEL_SMPLRT_DIV_1
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x01);  // ACCEL_SMPLRT_DIV_2
+
+    // Align ODR
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x09, 0x01);  // ODR_ALIGN_EN
+
+    // Back to bank 0
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00);
+
     // Check WHO_AM_I
-    uint8_t whoami = 0;
     if (i2c_reg_read_byte_dt(&cfg->i2c, 0x00, &whoami) < 0) {
         LOG_ERR("Failed to read WHO_AM_I");
         return -EIO;
@@ -93,9 +98,10 @@ static int icm20948_init(const struct device *dev)
         return -EINVAL;
     }
 
-    LOG_INF("ICM20948 initialized successfully (WHO_AM_I = 0x%X)", whoami);
+    LOG_INF("ICM20948 initialized successfully (WHO_AM_I = 0x%02X)", whoami);
     return 0;
 }
+
 
 
 static const struct sensor_driver_api icm20948_api = {
