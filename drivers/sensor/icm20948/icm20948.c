@@ -70,8 +70,8 @@ static int icm20948_init(const struct device *dev)
 
     i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x20); // Bank 2
     i2c_reg_write_byte_dt(&cfg->i2c, 0x14, 0x09); // ACCEL_CONFIG (2g, DLPF)
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00); // ACCEL_SMPLRT_DIV_1
-    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x01); // ACCEL_SMPLRT_DIV_2
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x10, 0x00);  // DIV_1
+    i2c_reg_write_byte_dt(&cfg->i2c, 0x11, 0x00);  // DIV_2 = 0
     i2c_reg_write_byte_dt(&cfg->i2c, 0x09, 0x01); // ODR_ALIGN_EN
     i2c_reg_write_byte_dt(&cfg->i2c, 0x7F, 0x00); // Back to Bank 0
 
