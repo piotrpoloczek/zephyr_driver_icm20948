@@ -893,7 +893,7 @@ void icm20948_write_register8(const struct device *dev, uint8_t bank, uint8_t re
     const struct icm20948_config *cfg = dev->config;
 
     icm20948_switch_bank(dev, bank);
-    i2c_reg_write_byte(cfg->i2c, cfg->i2c_addr, reg, val);
+    i2c_reg_write_byte(cfg->i2c, reg, val);
     k_busy_wait(5);  // delayMicroseconds(5)
 }
 
@@ -904,7 +904,7 @@ void icm20948_write_register16(const struct device *dev, uint8_t bank, uint8_t r
     icm20948_switch_bank(dev, bank);
 
     uint8_t buf[2] = { (val >> 8) & 0xFF, val & 0xFF };
-    i2c_burst_write(cfg->i2c, cfg->i2c_addr, reg, buf, 2);
+    i2c_burst_write(cfg->i2c, reg, buf, 2);
     k_busy_wait(5);
 }
 
@@ -915,7 +915,7 @@ uint8_t icm20948_read_register8(const struct device *dev, uint8_t bank, uint8_t 
 
     icm20948_switch_bank(dev, bank);
 
-    int ret = i2c_reg_read_byte(cfg->i2c, cfg->i2c_addr, reg, &value);
+    int ret = i2c_reg_read_byte(cfg->i2c, reg, &value);
     if (ret < 0) {
         LOG_ERR("Failed to read register 0x%02X", reg);
         return 0;
@@ -931,7 +931,7 @@ int16_t icm20948_read_register16(const struct device *dev, uint8_t bank, uint8_t
 
     icm20948_switch_bank(dev, bank);
 
-    int ret = i2c_burst_read(cfg->i2c, cfg->i2c_addr, reg, buf, 2);
+    int ret = i2c_burst_read(cfg->i2c, reg, buf, 2);
     if (ret < 0) {
         LOG_ERR("Failed to read 16-bit register at 0x%02X", reg);
         return 0;
@@ -946,21 +946,21 @@ void icm20948_read_all_data(const struct device *dev, uint8_t *data)
 
     icm20948_switch_bank(dev, 0);
 
-    int ret = i2c_burst_read(cfg->i2c, cfg->i2c_addr, ICM20948_ACCEL_OUT, data, 20);
+    int ret = i2c_burst_read(cfg->i2c, ICM20948_ACCEL_OUT, data, 20);
     if (ret < 0) {
         LOG_ERR("Failed to read all sensor data");
     }
 }
 
 
-void icm20948_read_xyz_from_fifo(const struct device *dev, struct xyz_float *out)
+void icm20948_read_xyz_from_fifo(const struct device *dev, struct icm20948_vec3f *out)
 {
     const struct icm20948_config *cfg = dev->config;
     uint8_t fifo_data[6];
 
     icm20948_switch_bank(dev, 0);
 
-    int ret = i2c_burst_read(cfg->i2c, cfg->i2c_addr, ICM20948_FIFO_R_W, fifo_data, 6);
+    int ret = i2c_burst_read(cfg->i2c, ICM20948_FIFO_R_W, fifo_data, 6);
     if (ret < 0) {
         LOG_ERR("Failed to read FIFO data");
         return;
