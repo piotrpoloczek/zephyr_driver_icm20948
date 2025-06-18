@@ -1012,6 +1012,18 @@ void icm20948_enable_mag_data_read(const struct device *dev, uint8_t reg, uint8_
     k_sleep(K_MSEC(10));
 }
 
+void icm20948_correct_acc_raw(const struct device *dev, struct icm20948_vec3f *v)
+{
+    struct icm20948_data *data = dev->data;
+    icm20948_correct_accel(data, v);
+}
+
+void icm20948_correct_gyr_raw(const struct device *dev, struct icm20948_vec3f *v)
+{
+    struct icm20948_data *data = dev->data;
+    icm20948_correct_gyro(data, v);
+}
+
 
 bool icm20948_mag_init(const struct device *dev)
 {
@@ -1065,9 +1077,6 @@ void icm20948_sleep(const struct device *dev, bool enable)
 
     icm20948_write_register8(dev, 0, ICM20948_PWR_MGMT_1, reg);
 }
-
-
-
 
 
 
