@@ -1,3 +1,6 @@
+#define DT_DRV_COMPAT invensense_icm20948
+
+
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
