@@ -42,12 +42,10 @@ int icm20948_init(const struct device *dev)
 
     icm20948_sleep(dev, false);
 
-    write_register8(dev, 2, ICM20948_ODR_ALIGN_EN, 1);
+    icm20948_write_register8(dev, 2, ICM20948_ODR_ALIGN_EN, 1);
 
     return 0;
 }
-
-
 
 void icm20948_auto_offsets(const struct device *dev)
 {
@@ -984,6 +982,11 @@ void icm20948_reset_chip(const struct device *dev)
 {
     icm20948_write_register8(dev, 0, ICM20948_PWR_MGMT_1, ICM20948_RESET);
     k_sleep(K_MSEC(10));
+}
+
+void reset_icm20948(const struct device *dev)
+{
+    icm20948_reset_chip(dev);
 }
 
 void icm20948_enable_i2c_master(const struct device *dev)
