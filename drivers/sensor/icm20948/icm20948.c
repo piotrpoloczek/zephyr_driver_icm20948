@@ -14,7 +14,7 @@ int icm20948_init(const struct device *dev)
     struct icm20948_data *data = dev->data;
 
     if (!device_is_ready(cfg->i2c.bus)) {
-        return false;
+        return -ENODEV;
     }
 
     data->current_bank = 0;
@@ -28,7 +28,7 @@ int icm20948_init(const struct device *dev)
         tries++;
     }
     if (tries == 10) {
-        return false;
+        return -EIO;
     }
 
     data->acc_offset = (struct icm20948_vec3f){0.0f, 0.0f, 0.0f};
@@ -44,8 +44,9 @@ int icm20948_init(const struct device *dev)
 
     write_register8(dev, 2, ICM20948_ODR_ALIGN_EN, 1);
 
-    return true;
+    return 0;
 }
+
 
 
 void icm20948_auto_offsets(const struct device *dev)
@@ -890,7 +891,7 @@ void icm20948_write_register16(const struct device *dev, uint8_t bank, uint8_t r
     icm20948_switch_bank(dev, bank);
 
     uint8_t buf[2] = { (val >> 8) & 0xFF, val & 0xFF };
-    i2c_burst_write(cfg->i2c, reg, buf, 2);
+    i2c_burst_write_dt(&cfg->i2c, reg, buf, 2);
     k_busy_wait(5);
 }
 

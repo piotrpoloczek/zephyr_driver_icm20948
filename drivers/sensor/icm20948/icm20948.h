@@ -8,6 +8,10 @@
 #include <stdint.h>
 #include "icm20948_vec3f.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /* Enums for ICM20948 configuration */
 
 enum icm20948_cycle {
@@ -256,17 +260,24 @@ struct icm20948_config {
 };
 
 struct icm20948_data {
-	uint8_t current_bank;
-	struct icm20948_vec3f acc_offset;
-	struct icm20948_vec3f acc_corr_factor;
-	float acc_range_factor;
-	struct icm20948_vec3f gyr_offset;
-	float gyr_range_factor;
-	uint8_t buffer[20];
-	uint8_t reg_val;
-	int16_t temperature;
-	enum icm20948_fifo_type fifo_type;
+    uint8_t current_bank;
+
+    // Accelerometer calibration
+    struct icm20948_vec3f acc_offset;
+    struct icm20948_vec3f acc_corr;    // renamed from acc_corr_factor for consistency
+    float acc_range;
+
+    // Gyroscope calibration
+    struct icm20948_vec3f gyr_offset;
+    float gyro_range;
+
+    // Miscellaneous
+    uint8_t buffer[20];
+    uint8_t reg_val;
+    int16_t temperature;
+    enum icm20948_fifo_type fifo_type;
 };
+
 
 int icm20948_init(const struct device *dev);
 void icm20948_auto_offsets(const struct device *dev);
