@@ -6,6 +6,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/spi.h>
 #include <stdint.h>
+#include "icm20948_vec3f.h"
 
 /* Enums for ICM20948 configuration */
 
