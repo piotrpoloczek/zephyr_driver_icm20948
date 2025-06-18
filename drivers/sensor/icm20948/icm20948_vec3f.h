@@ -1,71 +1,58 @@
 #pragma once
 
-#include <zephyr/types.h>
+#include <math.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct icm20948_vec3f {
+typedef struct {
     float x;
     float y;
     float z;
-};
+} vec3f;
 
-// Constructors
-static inline struct icm20948_vec3f vec3f_make(float x, float y, float z) {
-    return (struct icm20948_vec3f){x, y, z};
+// Set all fields to 0
+static inline void vec3f_zero(vec3f *v) {
+    v->x = 0;
+    v->y = 0;
+    v->z = 0;
 }
 
-static inline struct icm20948_vec3f vec3f_zero(void) {
-    return vec3f_make(0.0f, 0.0f, 0.0f);
+// Set from 3 floats
+static inline void vec3f_set(vec3f *v, float x, float y, float z) {
+    v->x = x;
+    v->y = y;
+    v->z = z;
 }
 
-// Unary operators
-static inline struct icm20948_vec3f vec3f_neg(struct icm20948_vec3f v) {
-    return vec3f_make(-v.x, -v.y, -v.z);
+// Scale a vector in-place
+static inline void vec3f_scale(vec3f *v, float factor) {
+    v->x *= factor;
+    v->y *= factor;
+    v->z *= factor;
 }
 
-// Binary operations
-static inline struct icm20948_vec3f vec3f_add(struct icm20948_vec3f a, struct icm20948_vec3f b) {
-    return vec3f_make(a.x + b.x, a.y + b.y, a.z + b.z);
+// Copy one vector to another
+static inline void vec3f_copy(vec3f *dest, const vec3f *src) {
+    dest->x = src->x;
+    dest->y = src->y;
+    dest->z = src->z;
 }
 
-static inline struct icm20948_vec3f vec3f_sub(struct icm20948_vec3f a, struct icm20948_vec3f b) {
-    return vec3f_make(a.x - b.x, a.y - b.y, a.z - b.z);
+// Compute magnitude
+static inline float vec3f_magnitude(const vec3f *v) {
+    return sqrtf(v->x * v->x + v->y * v->y + v->z * v->z);
 }
 
-static inline struct icm20948_vec3f vec3f_scale(struct icm20948_vec3f v, float s) {
-    return vec3f_make(v.x * s, v.y * s, v.z * s);
-}
-
-static inline struct icm20948_vec3f vec3f_div(struct icm20948_vec3f v, float s) {
-    return vec3f_make(v.x / s, v.y / s, v.z / s);
-}
-
-// In-place operations
-static inline void vec3f_add_inplace(struct icm20948_vec3f *a, struct icm20948_vec3f b) {
-    a->x += b.x;
-    a->y += b.y;
-    a->z += b.z;
-}
-
-static inline void vec3f_sub_inplace(struct icm20948_vec3f *a, struct icm20948_vec3f b) {
-    a->x -= b.x;
-    a->y -= b.y;
-    a->z -= b.z;
-}
-
-static inline void vec3f_scale_inplace(struct icm20948_vec3f *v, float s) {
-    v->x *= s;
-    v->y *= s;
-    v->z *= s;
-}
-
-static inline void vec3f_div_inplace(struct icm20948_vec3f *v, float s) {
-    v->x /= s;
-    v->y /= s;
-    v->z /= s;
+// Normalize vector (returns magnitude before normalization)
+static inline float vec3f_normalize(vec3f *v) {
+    float mag = vec3f_magnitude(v);
+    if (mag > 0.00001f) {
+        float inv_mag = 1.0f / mag;
+        vec3f_scale(v, inv_mag);
+    }
+    return mag;
 }
 
 #ifdef __cplusplus
