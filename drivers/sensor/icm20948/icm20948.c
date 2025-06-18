@@ -8,21 +8,7 @@
 
 LOG_MODULE_REGISTER(icm20948, CONFIG_SENSOR_LOG_LEVEL);
 
-struct icm20948_config {
-	struct i2c_dt_spec i2c;
-};
-
-struct icm20948_data {
-	struct icm20948_vec3f acc_offset;
-	struct icm20948_vec3f acc_corr_factor;
-	struct icm20948_vec3f gyr_offset;
-	float acc_range_factor;
-	float gyr_range_factor;
-	uint8_t current_bank;
-	enum icm20948_fifo_type fifo_type;
-};
-
-bool icm20948_init(const struct device *dev)
+int icm20948_init(const struct device *dev)
 {
     const struct icm20948_config *cfg = dev->config;
     struct icm20948_data *data = dev->data;
@@ -931,7 +917,7 @@ int16_t icm20948_read_register16(const struct device *dev, uint8_t bank, uint8_t
 
     icm20948_switch_bank(dev, bank);
 
-    int ret = i2c_burst_read(cfg->i2c, reg, buf, 2);
+    int ret = i2c_burst_read(cfg->i2c.bus, cfg->i2c.addr, reg, buf, 2);
     if (ret < 0) {
         LOG_ERR("Failed to read 16-bit register at 0x%02X", reg);
         return 0;
@@ -946,7 +932,7 @@ void icm20948_read_all_data(const struct device *dev, uint8_t *data)
 
     icm20948_switch_bank(dev, 0);
 
-    int ret = i2c_burst_read(cfg->i2c, ICM20948_ACCEL_OUT, data, 20);
+    int ret = i2c_burst_read(cfg->i2c.bus, cfg->i2c.addr, ICM20948_ACCEL_OUT, data, 20);
     if (ret < 0) {
         LOG_ERR("Failed to read all sensor data");
     }
@@ -960,7 +946,7 @@ void icm20948_read_xyz_from_fifo(const struct device *dev, struct icm20948_vec3f
 
     icm20948_switch_bank(dev, 0);
 
-    int ret = i2c_burst_read(cfg->i2c, ICM20948_FIFO_R_W, fifo_data, 6);
+    int ret = i2c_burst_read(cfg->i2c.bus, cfg->i2c.addr, ICM20948_FIFO_R_W, fifo_data, 6);
     if (ret < 0) {
         LOG_ERR("Failed to read FIFO data");
         return;
