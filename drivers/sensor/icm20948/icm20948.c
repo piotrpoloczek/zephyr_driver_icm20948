@@ -70,11 +70,11 @@ void icm20948_auto_offsets(const struct device *dev)
     for (int i = 0; i < 50; i++) {
         icm20948_read_sensor(dev);
         icm20948_get_acc_raw(dev, &acc);
-        data->acc_offset = icm20948_vec3f_add(data->acc_offset, acc);
+        data->acc_offset = vec3f_add(data->acc_offset, acc);
         k_msleep(10);
     }
 
-    data->acc_offset = icm20948_vec3f_div(data->acc_offset, 50.0f);
+    data->acc_offset = vec3f_div(data->acc_offset, 50.0f);
     data->acc_offset.z -= 16384.0f;
 
     data->gyr_offset = (struct icm20948_vec3f){0.0f, 0.0f, 0.0f};
@@ -82,11 +82,11 @@ void icm20948_auto_offsets(const struct device *dev)
     for (int i = 0; i < 50; i++) {
         icm20948_read_sensor(dev);
         icm20948_get_gyr_raw(dev, &gyr);
-        data->gyr_offset = icm20948_vec3f_add(data->gyr_offset, gyr);
+        data->gyr_offset = vec3f_add(data->gyr_offset, gyr);
         k_msleep(1);
     }
 
-    data->gyr_offset = icm20948_vec3f_div(data->gyr_offset, 50.0f);
+    data->gyr_offset = vec3f_div(data->gyr_offset, 50.0f);
 }
 
 
@@ -172,7 +172,7 @@ void icm20948_set_acc_range(const struct device *dev, enum icm20948_acc_range ra
     data->acc_range_factor = 1 << range;
 }
 
-void icm20948_set_acc_dlpf(const struct device *dev, enum icm20948_dlpf_mode mode)
+void icm20948_set_acc_dlpf(const struct device *dev, enum icm20948_dlpf mode)
 {
     uint8_t val = icm20948_read_reg(dev, 2, ICM20948_ACCEL_CONFIG);
 
@@ -221,7 +221,7 @@ void icm20948_set_gyr_range(const struct device *dev, enum icm20948_gyro_range r
 }
 
 
-void icm20948_set_gyr_dlpf(const struct device *dev, enum icm20948_dlpf_mode mode)
+void icm20948_set_gyr_dlpf(const struct device *dev, enum icm20948_dlpf mode)
 {
     uint8_t val = icm20948_read_reg(dev, 2, ICM20948_GYRO_CONFIG_1);
 
@@ -243,7 +243,7 @@ void icm20948_set_gyr_sample_rate_divider(const struct device *dev, uint8_t div)
 }
 
 
-void icm20948_set_temp_dlpf(const struct device *dev, enum icm20948_dlpf_mode mode)
+void icm20948_set_temp_dlpf(const struct device *dev, enum icm20948_dlpf mode)
 {
     icm20948_write_reg(dev, 2, ICM20948_TEMP_CONFIG, (uint8_t)mode);
 }
