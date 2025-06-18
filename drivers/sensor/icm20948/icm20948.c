@@ -32,11 +32,11 @@ int icm20948_init(const struct device *dev)
     }
 
     data->acc_offset = (struct icm20948_vec3f){0.0f, 0.0f, 0.0f};
-    data->acc_corr_factor = (struct icm20948_vec3f){1.0f, 1.0f, 1.0f};
-    data->acc_range_factor = 1.0f;
+    data->acc_corr = (struct icm20948_vec3f){1.0f, 1.0f, 1.0f};
+    data->acc_range = 1.0f;
 
     data->gyr_offset = (struct icm20948_vec3f){0.0f, 0.0f, 0.0f};
-    data->gyr_range_factor = 1.0f;
+    data->gyr_range = 1.0f;
 
     data->fifo_type = ICM20948_FIFO_ACC;
 
@@ -99,9 +99,9 @@ void icm20948_set_acc_offsets(const struct device *dev, float x_min, float x_max
     data->acc_offset.y = 0.5f * (y_max + y_min);
     data->acc_offset.z = 0.5f * (z_max + z_min);
 
-    data->acc_corr_factor.x = (x_max + fabsf(x_min)) / 32768.0f;
-    data->acc_corr_factor.y = (y_max + fabsf(y_min)) / 32768.0f;
-    data->acc_corr_factor.z = (z_max + fabsf(z_min)) / 32768.0f;
+    data->acc_corr.x = (x_max + fabsf(x_min)) / 32768.0f;
+    data->acc_corr.y = (y_max + fabsf(y_min)) / 32768.0f;
+    data->acc_corr.z = (z_max + fabsf(z_min)) / 32768.0f;
 }
 
 
@@ -170,7 +170,7 @@ void icm20948_set_acc_range(const struct device *dev, enum icm20948_acc_range ra
 
     icm20948_write_reg(dev, 2, ICM20948_ACCEL_CONFIG, val);
 
-    data->acc_range_factor = 1 << range;
+    data->acc_range = 1 << range;
 }
 
 void icm20948_set_acc_dlpf(const struct device *dev, enum icm20948_dlpf mode)
@@ -218,7 +218,7 @@ void icm20948_set_gyr_range(const struct device *dev, enum icm20948_gyro_range r
 
     icm20948_write_reg(dev, 2, ICM20948_GYRO_CONFIG_1, val);
 
-    data->gyr_range_factor = (1 << range);
+    data->gyro_range = (1 << range);
 }
 
 
@@ -286,9 +286,9 @@ void icm20948_get_acc_g(const struct device *dev, struct icm20948_vec3f *g)
 
     icm20948_get_corrected_acc_raw(dev, g);
 
-    g->x = g->x * data->acc_range_factor / 16384.0f;
-    g->y = g->y * data->acc_range_factor / 16384.0f;
-    g->z = g->z * data->acc_range_factor / 16384.0f;
+    g->x = g->x * data->acc_range / 16384.0f;
+    g->y = g->y * data->acc_range / 16384.0f;
+    g->z = g->z * data->acc_range / 16384.0f;
 }
 
 void icm20948_get_acc_raw_from_fifo(const struct device *dev, struct icm20948_vec3f *acc)
@@ -309,9 +309,9 @@ void icm20948_get_g_from_fifo(const struct device *dev, struct icm20948_vec3f *g
     struct icm20948_data *data = dev->data;
     icm20948_get_corrected_acc_raw_from_fifo(dev, g);
 
-    g->x = g->x * data->acc_range_factor / 16384.0f;
-    g->y = g->y * data->acc_range_factor / 16384.0f;
-    g->z = g->z * data->acc_range_factor / 16384.0f;
+    g->x = g->x * data->acc_range / 16384.0f;
+    g->y = g->y * data->acc_range / 16384.0f;
+    g->z = g->z * data->acc_range / 16384.0f;
 }
 
 float icm20948_get_resultant_g(const struct icm20948_vec3f *g)
@@ -347,9 +347,9 @@ void icm20948_get_gyr_values(const struct device *dev, struct icm20948_vec3f *gy
     struct icm20948_data *data = dev->data;
     icm20948_get_corrected_gyr_raw(dev, gyr);
 
-    gyr->x = gyr->x * data->gyr_range_factor * 250.0f / 32768.0f;
-    gyr->y = gyr->y * data->gyr_range_factor * 250.0f / 32768.0f;
-    gyr->z = gyr->z * data->gyr_range_factor * 250.0f / 32768.0f;
+    gyr->x = gyr->x * data->gyro_range * 250.0f / 32768.0f;
+    gyr->y = gyr->y * data->gyro_range * 250.0f / 32768.0f;
+    gyr->z = gyr->z * data->gyro_range * 250.0f / 32768.0f;
 }
 
 void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm20948_vec3f *gyr)
@@ -358,9 +358,9 @@ void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm20948_vec3f 
     icm20948_read_xyz_from_fifo(dev, gyr, ICM20948_SENSOR_GYR);
 
     icm20948_correct_gyr_raw(dev, gyr);
-    gyr->x = gyr->x * data->gyr_range_factor * 250.0f / 32768.0f;
-    gyr->y = gyr->y * data->gyr_range_factor * 250.0f / 32768.0f;
-    gyr->z = gyr->z * data->gyr_range_factor * 250.0f / 32768.0f;
+    gyr->x = gyr->x * data->gyro_range * 250.0f / 32768.0f;
+    gyr->y = gyr->y * data->gyro_range * 250.0f / 32768.0f;
+    gyr->z = gyr->z * data->gyro_range * 250.0f / 32768.0f;
 }
 
 void icm20948_get_mag_values(const struct device *dev, struct icm20948_vec3f *mag)
