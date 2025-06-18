@@ -111,25 +111,24 @@ static float get_gyro_scale(uint8_t fs) {
     }
 }
 
+
 int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
     struct icm20948_data *data = dev->data;
     uint8_t buf[14];
+    int ret;
 
     k_mutex_lock(&data->lock, K_FOREVER);
 
-    // Switch to bank 0
-    icm20948_switch_bank(dev, ICM20948_BANK0);
-
-    // Read accel, gyro, temp in one shot
-    int ret = icm20948_read_registers(dev, ICM20948_REG_ACCEL_XOUT_H, buf, sizeof(buf));
+    // --- Read accelerometer, gyroscope, and temperature ---
+    icm20948_switch_bank(dev, ICM20948_BANK_0);
+    ret = icm20948_read_registers(dev, ICM20948_REG_ACCEL_XOUT_H, buf, sizeof(buf));
     if (ret < 0) {
+        LOG_ERR("Failed to read accel/gyro/temp data");
         k_mutex_unlock(&data->lock);
-        LOG_ERR("Failed to read IMU data");
         return ret;
     }
 
-    // Unpack and convert raw values
     float a_scale = get_accel_scale(data->accel_fs);
     float g_scale = get_gyro_scale(data->gyro_fs);
 
@@ -143,18 +142,18 @@ int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan)
 
     data->temperature = ((int16_t)((buf[12] << 8) | buf[13])) / 333.87 + 21.0;
 
-        // Read 6 bytes magnetometer data via I2C master -> EXT_SLV_SENS_DATA_00
+    // --- Read magnetometer (AK09916) ---
     icm20948_switch_bank(dev, ICM20948_BANK_0);
-
     uint8_t mag_buf[9];
-    ret = icm20948_read_registers(dev, ICM20948_REG_EXT_SLV_SENS_DATA_00, mag_buf, 9);
+    ret = icm20948_read_registers(dev, ICM20948_REG_EXT_SLV_SENS_DATA_00, mag_buf, sizeof(mag_buf));
     if (ret < 0) {
+        LOG_ERR("Failed to read magnetometer registers");
         k_mutex_unlock(&data->lock);
-        LOG_ERR("Failed to read magnetometer data");
         return ret;
     }
 
-    // Check DRDY and overflow
+    LOG_DBG("AK09916 ST1 = 0x%02X ST2 = 0x%02X", mag_buf[0], mag_buf[8]);
+
     if (!(mag_buf[0] & AK09916_ST1_DRDY)) {
         LOG_WRN("Magnetometer data not ready");
         k_mutex_unlock(&data->lock);
@@ -167,7 +166,6 @@ int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan)
         return -EIO;
     }
 
-    // Convert to signed values
     int16_t mx = (int16_t)(mag_buf[2] << 8 | mag_buf[1]);
     int16_t my = (int16_t)(mag_buf[4] << 8 | mag_buf[3]);
     int16_t mz = (int16_t)(mag_buf[6] << 8 | mag_buf[5]);
@@ -176,10 +174,10 @@ int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan)
     data->mag[1] = my * AK09916_MAG_SCALE;
     data->mag[2] = mz * AK09916_MAG_SCALE;
 
-
     k_mutex_unlock(&data->lock);
     return 0;
 }
+
 
 int icm20948_channel_get(const struct device *dev,
                          enum sensor_channel chan,
@@ -189,50 +187,54 @@ int icm20948_channel_get(const struct device *dev,
 
     k_mutex_lock(&data->lock, K_FOREVER);
 
-    float *src = NULL;
     switch (chan) {
     case SENSOR_CHAN_ACCEL_X:
-        val->val1 = (int32_t)data->accel[0];
-        val->val2 = (data->accel[0] - val->val1) * 1e6;
-        break;
     case SENSOR_CHAN_ACCEL_Y:
-        val->val1 = (int32_t)data->accel[1];
-        val->val2 = (data->accel[1] - val->val1) * 1e6;
-        break;
     case SENSOR_CHAN_ACCEL_Z:
-        val->val1 = (int32_t)data->accel[2];
-        val->val2 = (data->accel[2] - val->val1) * 1e6;
+        val->val1 = (int32_t)data->accel[chan - SENSOR_CHAN_ACCEL_X];
+        val->val2 = (data->accel[chan - SENSOR_CHAN_ACCEL_X] - val->val1) * 1e6;
         break;
+
+    case SENSOR_CHAN_ACCEL_XYZ:
+        for (int i = 0; i < 3; i++) {
+            val[i].val1 = (int32_t)data->accel[i];
+            val[i].val2 = (data->accel[i] - val[i].val1) * 1e6;
+        }
+        break;
+
     case SENSOR_CHAN_GYRO_X:
-        val->val1 = (int32_t)data->gyro[0];
-        val->val2 = (data->gyro[0] - val->val1) * 1e6;
-        break;
     case SENSOR_CHAN_GYRO_Y:
-        val->val1 = (int32_t)data->gyro[1];
-        val->val2 = (data->gyro[1] - val->val1) * 1e6;
-        break;
     case SENSOR_CHAN_GYRO_Z:
-        val->val1 = (int32_t)data->gyro[2];
-        val->val2 = (data->gyro[2] - val->val1) * 1e6;
+        val->val1 = (int32_t)data->gyro[chan - SENSOR_CHAN_GYRO_X];
+        val->val2 = (data->gyro[chan - SENSOR_CHAN_GYRO_X] - val->val1) * 1e6;
         break;
+
+    case SENSOR_CHAN_GYRO_XYZ:
+        for (int i = 0; i < 3; i++) {
+            val[i].val1 = (int32_t)data->gyro[i];
+            val[i].val2 = (data->gyro[i] - val[i].val1) * 1e6;
+        }
+        break;
+
+    case SENSOR_CHAN_MAGN_X:
+    case SENSOR_CHAN_MAGN_Y:
+    case SENSOR_CHAN_MAGN_Z:
+        val->val1 = (int32_t)data->mag[chan - SENSOR_CHAN_MAGN_X];
+        val->val2 = (data->mag[chan - SENSOR_CHAN_MAGN_X] - val->val1) * 1e6;
+        break;
+
+    case SENSOR_CHAN_MAGN_XYZ:
+        for (int i = 0; i < 3; i++) {
+            val[i].val1 = (int32_t)data->mag[i];
+            val[i].val2 = (data->mag[i] - val[i].val1) * 1e6;
+        }
+        break;
+
     case SENSOR_CHAN_DIE_TEMP:
         val->val1 = (int32_t)data->temperature;
         val->val2 = (data->temperature - val->val1) * 1e6;
         break;
-    case SENSOR_CHAN_ACCEL_XYZ:
-        case SENSOR_CHAN_MAGN_X:
-        val->val1 = (int32_t)data->mag[0];
-        val->val2 = (data->mag[0] - val->val1) * 1e6;
-        break;
-    case SENSOR_CHAN_MAGN_Y:
-        val->val1 = (int32_t)data->mag[1];
-        val->val2 = (data->mag[1] - val->val1) * 1e6;
-        break;
-    case SENSOR_CHAN_MAGN_Z:
-        val->val1 = (int32_t)data->mag[2];
-        val->val2 = (data->mag[2] - val->val1) * 1e6;
-        break;
-    case SENSOR_CHAN_GYRO_XYZ:
+
     default:
         k_mutex_unlock(&data->lock);
         return -ENOTSUP;
@@ -300,8 +302,6 @@ int icm20948_set_mag_mode(const struct device *dev, enum ak09916_mode mode)
     k_msleep(10);
     return 0;
 }
-
-
 
 
 
