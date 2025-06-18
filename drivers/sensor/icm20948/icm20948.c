@@ -11,25 +11,25 @@
 
 LOG_MODULE_REGISTER(icm20948, CONFIG_SENSOR_LOG_LEVEL);
 
-static int icm20948_switch_bank(const struct device *dev, uint8_t bank)
+int icm20948_switch_bank(const struct device *dev, uint8_t bank)
 {
     const struct icm20948_config *cfg = dev->config;
     return i2c_reg_write_byte_dt(&cfg->i2c, ICM20948_REG_BANK_SEL, bank);
 }
 
-static int icm20948_write_register(const struct device *dev, uint8_t reg, uint8_t val)
+int icm20948_write_register(const struct device *dev, uint8_t reg, uint8_t val)
 {
     const struct icm20948_config *cfg = dev->config;
     return i2c_reg_write_byte_dt(&cfg->i2c, reg, val);
 }
 
-static int icm20948_read_register(const struct device *dev, uint8_t reg, uint8_t *val)
+int icm20948_read_register(const struct device *dev, uint8_t reg, uint8_t *val)
 {
     const struct icm20948_config *cfg = dev->config;
     return i2c_reg_read_byte_dt(&cfg->i2c, reg, val);
 }
 
-static int icm20948_read_registers(const struct device *dev, uint8_t reg, uint8_t *buf, size_t len)
+int icm20948_read_registers(const struct device *dev, uint8_t reg, uint8_t *buf, size_t len)
 {
     const struct icm20948_config *cfg = dev->config;
     return i2c_burst_read_dt(&cfg->i2c, reg, buf, len);
@@ -86,23 +86,6 @@ static int icm20948_sensor_init(const struct device *dev)
     return 0;
 }
 
-// Basic sensor API stubs
-static int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan)
-{
-    ARG_UNUSED(chan);
-    // Will be implemented later
-    return 0;
-}
-
-static int icm20948_channel_get(const struct device *dev,
-                                 enum sensor_channel chan,
-                                 struct sensor_value *val)
-{
-    ARG_UNUSED(chan);
-    ARG_UNUSED(val);
-    // Will be implemented later
-    return 0;
-}
 
 static int16_t bytes_to_int16(uint8_t msb, uint8_t lsb) {
     return (int16_t)((msb << 8) | lsb);
