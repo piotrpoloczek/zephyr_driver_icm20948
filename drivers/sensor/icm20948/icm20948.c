@@ -277,7 +277,7 @@ void icm20948_read_sensor(const struct device *dev)
 }
 
 
-void icm20948_get_acc_raw(const struct device *dev, struct icm_xyz *acc)
+void icm20948_get_acc_raw(const struct device *dev, struct icm20948_vec3f *acc)
 {
     struct icm20948_data *data = dev->data;
     const uint8_t *buf = data->buffer;
@@ -287,13 +287,13 @@ void icm20948_get_acc_raw(const struct device *dev, struct icm_xyz *acc)
     acc->z = (int16_t)((buf[4] << 8) | buf[5]);
 }
 
-void icm20948_get_corrected_acc_raw(const struct device *dev, struct icm_xyz *acc)
+void icm20948_get_corrected_acc_raw(const struct device *dev, struct icm20948_vec3f *acc)
 {
     icm20948_get_acc_raw(dev, acc);
     icm20948_correct_acc_raw(dev, acc);  // Implement this function to subtract offset + scale
 }
 
-void icm20948_get_acc_g(const struct device *dev, struct icm_xyz *g)
+void icm20948_get_acc_g(const struct device *dev, struct icm20948_vec3f *g)
 {
     struct icm20948_data *data = dev->data;
 
@@ -304,20 +304,20 @@ void icm20948_get_acc_g(const struct device *dev, struct icm_xyz *g)
     g->z = g->z * data->acc_range_factor / 16384.0f;
 }
 
-void icm20948_get_acc_raw_from_fifo(const struct device *dev, struct icm_xyz *acc)
+void icm20948_get_acc_raw_from_fifo(const struct device *dev, struct icm20948_vec3f *acc)
 {
     icm20948_read_xyz_from_fifo(dev, acc, ICM20948_SENSOR_ACC);
 }
 
 
-void icm20948_get_corrected_acc_raw_from_fifo(const struct device *dev, struct icm_xyz *acc)
+void icm20948_get_corrected_acc_raw_from_fifo(const struct device *dev, struct icm20948_vec3f *acc)
 {
     icm20948_get_acc_raw_from_fifo(dev, acc);
     icm20948_correct_acc_raw(dev, acc);
 }
 
 
-void icm20948_get_g_from_fifo(const struct device *dev, struct icm_xyz *g)
+void icm20948_get_g_from_fifo(const struct device *dev, struct icm20948_vec3f *g)
 {
     struct icm20948_data *data = dev->data;
     icm20948_get_corrected_acc_raw_from_fifo(dev, g);
@@ -327,7 +327,7 @@ void icm20948_get_g_from_fifo(const struct device *dev, struct icm_xyz *g)
     g->z = g->z * data->acc_range_factor / 16384.0f;
 }
 
-float icm20948_get_resultant_g(const struct icm_xyz *g)
+float icm20948_get_resultant_g(const struct icm20948_vec3f *g)
 {
     return sqrtf(g->x * g->x + g->y * g->y + g->z * g->z);
 }
@@ -339,7 +339,7 @@ float icm20948_get_temperature(const struct device *dev)
     return ((float)raw - ICM20948_ROOM_TEMP_OFFSET) / ICM20948_T_SENSITIVITY + 21.0f;
 }
 
-void icm20948_get_gyr_raw(const struct device *dev, struct icm_xyz *gyr)
+void icm20948_get_gyr_raw(const struct device *dev, struct icm20948_vec3f *gyr)
 {
     struct icm20948_data *data = dev->data;
     const uint8_t *buf = data->buffer;
@@ -349,13 +349,13 @@ void icm20948_get_gyr_raw(const struct device *dev, struct icm_xyz *gyr)
     gyr->z = (int16_t)((buf[10] << 8) | buf[11]);
 }
 
-void icm20948_get_corrected_gyr_raw(const struct device *dev, struct icm_xyz *gyr)
+void icm20948_get_corrected_gyr_raw(const struct device *dev, struct icm20948_vec3f *gyr)
 {
     icm20948_get_gyr_raw(dev, gyr);
     icm20948_correct_gyr_raw(dev, gyr);
 }
 
-void icm20948_get_gyr_values(const struct device *dev, struct icm_xyz *gyr)
+void icm20948_get_gyr_values(const struct device *dev, struct icm20948_vec3f *gyr)
 {
     struct icm20948_data *data = dev->data;
     icm20948_get_corrected_gyr_raw(dev, gyr);
@@ -365,7 +365,7 @@ void icm20948_get_gyr_values(const struct device *dev, struct icm_xyz *gyr)
     gyr->z = gyr->z * data->gyr_range_factor * 250.0f / 32768.0f;
 }
 
-void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm_xyz *gyr)
+void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm20948_vec3f *gyr)
 {
     struct icm20948_data *data = dev->data;
     icm20948_read_xyz_from_fifo(dev, gyr, ICM20948_SENSOR_GYR);
@@ -376,7 +376,7 @@ void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm_xyz *gyr)
     gyr->z = gyr->z * data->gyr_range_factor * 250.0f / 32768.0f;
 }
 
-void icm20948_get_mag_values(const struct device *dev, struct icm_xyz *mag)
+void icm20948_get_mag_values(const struct device *dev, struct icm20948_vec3f *mag)
 {
     struct icm20948_data *data = dev->data;
     const uint8_t *buf = data->buffer;
@@ -440,9 +440,9 @@ void icm20948_set_sleep(const struct device *dev, bool enable)
     icm20948_write_u8(dev, 0, ICM20948_PWR_MGMT_1, val);
 }
 
-void icm20948_get_angles(const struct device *dev, struct icm_xyz *angle)
+void icm20948_get_angles(const struct device *dev, struct icm20948_vec3f *angle)
 {
-    struct icm_xyz g;
+    struct icm20948_vec3f g;
     icm20948_get_g_values(dev, &g);  // Already returns normalized Gs
 
     g.x = CLAMP(g.x, -1.0f, 1.0f);
@@ -456,7 +456,7 @@ void icm20948_get_angles(const struct device *dev, struct icm_xyz *angle)
 
 enum icm20948_orientation icm20948_get_orientation(const struct device *dev)
 {
-    struct icm_xyz angle;
+    struct icm20948_vec3f angle;
     icm20948_get_angles(dev, &angle);
 
     if (fabsf(angle.x) < 45.0f) {
@@ -492,14 +492,14 @@ const char *icm20948_get_orientation_as_str(const struct device *dev)
 
 float icm20948_get_pitch(const struct device *dev)
 {
-    struct icm_xyz a;
+    struct icm20948_vec3f a;
     icm20948_get_angles(dev, &a);
     return atan2f(-a.x, sqrtf(fabsf(a.y * a.y + a.z * a.z))) * 180.0f / (float)M_PI;
 }
 
 float icm20948_get_roll(const struct device *dev)
 {
-    struct icm_xyz a;
+    struct icm20948_vec3f a;
     icm20948_get_angles(dev, &a);
     return atan2f(a.y, a.z) * 180.0f / (float)M_PI;
 }

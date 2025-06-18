@@ -324,4 +324,5 @@ uint16_t icm20948_mag_whoami(const struct device *dev);
 void icm20948_mag_set_mode(const struct device *dev, enum ak09916_op_mode mode);
 void icm20948_mag_reset(const struct device *dev);
 
-#endif
+
+#endif /* ZEPHYR_ICM20948_H_ */
