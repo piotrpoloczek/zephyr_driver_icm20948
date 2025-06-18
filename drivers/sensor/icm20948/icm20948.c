@@ -855,9 +855,9 @@ void icm20948_correct_accel(struct icm20948_data *data, struct icm20948_vec3f *v
 
 void icm20948_correct_gyro(struct icm20948_data *data, struct icm20948_vec3f *v)
 {
-    v->x -= (data->gyro_offset.x / data->gyro_range);
-    v->y -= (data->gyro_offset.y / data->gyro_range);
-    v->z -= (data->gyro_offset.z / data->gyro_range);
+    v->x -= (data->gyr_offset.x / data->gyro_range);
+    v->y -= (data->gyr_offset.y / data->gyro_range);
+    v->z -= (data->gyr_offset.z / data->gyro_range);
 }
 
 

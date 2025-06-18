@@ -268,7 +268,7 @@ struct icm20948_data {
     float acc_range;
 
     // Gyroscope calibration
-    struct icm20948_vec3f gyr_offset;
+    struct icm20948_vec3f gyro_offset;
     float gyro_range;
 
     // Miscellaneous
