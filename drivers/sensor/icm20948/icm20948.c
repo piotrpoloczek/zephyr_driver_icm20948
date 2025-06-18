@@ -218,7 +218,7 @@ void icm20948_set_gyr_range(const struct device *dev, enum icm20948_gyro_range r
 
     icm20948_write_reg(dev, 2, ICM20948_GYRO_CONFIG_1, val);
 
-    data->gyro_range = (1 << range);
+    data->gyr_range = (1 << range);
 }
 
 
