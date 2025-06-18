@@ -377,13 +377,6 @@ void icm20948_get_mag_values(const struct device *dev, struct icm20948_vec3f *ma
     mag->z = z * AK09916_MAG_LSB;
 }
 
-void icm20948_enable_cycle(const struct device *dev, enum icm20948_cycle cycle)
-{
-    uint8_t val = icm20948_read_u8(dev, 0, ICM20948_LP_CONFIG);
-    val &= 0x0F;
-    val |= (uint8_t)cycle;
-    icm20948_write_u8(dev, 0, ICM20948_LP_CONFIG, val);
-}
 
 void icm20948_enable_cycle(const struct device *dev, enum icm20948_cycle cycle)
 {

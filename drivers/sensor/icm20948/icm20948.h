@@ -42,6 +42,13 @@ enum icm20948_fifo_type {
     ICM20948_FIFO_ACC_GYR = 0x1E
 };
 
+enum icm20948_sensor_type {
+    ICM20948_SENSOR_ACC = 0,
+    ICM20948_SENSOR_GYR = 1,
+    ICM20948_SENSOR_MAG = 2
+};
+
+
 enum icm20948_fifo_mode {
     ICM20948_CONTINUOUS,
     ICM20948_STOP_WHEN_FULL
@@ -103,6 +110,17 @@ enum ak09916_op_mode {
     AK09916_CONT_MODE_20HZ  = 0x04,
     AK09916_CONT_MODE_50HZ  = 0x06,
     AK09916_CONT_MODE_100HZ = 0x08
+};
+
+enum icm20948_acc_avg_lp {
+    ICM20948_ACC_AVG_4X   = 0x00,
+    ICM20948_ACC_AVG_8X   = 0x01,
+    ICM20948_ACC_AVG_16X  = 0x02,
+    ICM20948_ACC_AVG_32X  = 0x03,
+    ICM20948_ACC_AVG_64X  = 0x04,
+    ICM20948_ACC_AVG_128X = 0x05,
+    ICM20948_ACC_AVG_256X = 0x06,
+    ICM20948_ACC_AVG_512X = 0x07,
 };
 
 enum icm20948_orientation {
@@ -268,7 +286,7 @@ struct icm20948_data {
     float acc_range;
 
     // Gyroscope calibration
-    struct icm20948_vec3f gyro_offset;
+    struct icm20948_vec3f gyr_offset;
     float gyro_range;
 
     // Miscellaneous
@@ -324,7 +342,7 @@ bool icm20948_check_int(const struct device *dev, uint8_t src, enum icm20948_int
 void icm20948_set_wom_threshold(const struct device *dev, uint8_t threshold, enum icm20948_wom_comp wom);
 
 void icm20948_enable_fifo(const struct device *dev, bool enable);
-void icm20948_set_fifo_mode(const struct device *dev, enum icm20948_fifo_mode mode);
+void icm20948_set_fifo_mode(const struct device *dev, bool stream_mode);
 void icm20948_start_fifo(const struct device *dev, enum icm20948_fifo_type type);
 void icm20948_stop_fifo(const struct device *dev);
 void icm20948_reset_fifo(const struct device *dev);
