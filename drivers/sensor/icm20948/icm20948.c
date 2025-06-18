@@ -347,9 +347,9 @@ void icm20948_get_gyr_values(const struct device *dev, struct icm20948_vec3f *gy
     struct icm20948_data *data = dev->data;
     icm20948_get_corrected_gyr_raw(dev, gyr);
 
-    gyr->x = gyr->x * data->gyro_range * 250.0f / 32768.0f;
-    gyr->y = gyr->y * data->gyro_range * 250.0f / 32768.0f;
-    gyr->z = gyr->z * data->gyro_range * 250.0f / 32768.0f;
+    gyr->x = gyr->x * data->gyr_range * 250.0f / 32768.0f;
+    gyr->y = gyr->y * data->gyr_range * 250.0f / 32768.0f;
+    gyr->z = gyr->z * data->gyr_range * 250.0f / 32768.0f;
 }
 
 void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm20948_vec3f *gyr)
@@ -358,9 +358,9 @@ void icm20948_get_gyr_from_fifo(const struct device *dev, struct icm20948_vec3f 
     icm20948_read_xyz_from_fifo(dev, gyr, ICM20948_SENSOR_GYR);
 
     icm20948_correct_gyr_raw(dev, gyr);
-    gyr->x = gyr->x * data->gyro_range * 250.0f / 32768.0f;
-    gyr->y = gyr->y * data->gyro_range * 250.0f / 32768.0f;
-    gyr->z = gyr->z * data->gyro_range * 250.0f / 32768.0f;
+    gyr->x = gyr->x * data->gyr_range * 250.0f / 32768.0f;
+    gyr->y = gyr->y * data->gyr_range * 250.0f / 32768.0f;
+    gyr->z = gyr->z * data->gyr_range * 250.0f / 32768.0f;
 }
 
 void icm20948_get_mag_values(const struct device *dev, struct icm20948_vec3f *mag)
@@ -687,22 +687,6 @@ void icm20948_set_wake_on_motion_threshold(const struct device *dev,
     icm20948_write_u8(dev, 2, ICM20948_ACCEL_WOM_THR, threshold);
 }
 
-void icm20948_set_wake_on_motion_threshold(const struct device *dev,
-                                           uint8_t threshold,
-                                           bool enable_comparison)
-{
-    uint8_t val = icm20948_read_u8(dev, 2, ICM20948_ACCEL_INTEL_CTRL);
-
-    if (enable_comparison) {
-        val |= 0x01;
-    } else {
-        val &= ~0x01;
-    }
-
-    icm20948_write_u8(dev, 2, ICM20948_ACCEL_INTEL_CTRL, val);
-    icm20948_write_u8(dev, 2, ICM20948_ACCEL_WOM_THR, threshold);
-}
-
 void icm20948_enable_fifo(const struct device *dev, bool enable)
 {
     uint8_t val = icm20948_read_u8(dev, 0, ICM20948_USER_CTRL);
@@ -848,9 +832,9 @@ void icm20948_correct_accel(struct icm20948_data *data, struct icm20948_vec3f *v
 
 void icm20948_correct_gyro(struct icm20948_data *data, struct icm20948_vec3f *v)
 {
-    v->x -= (data->gyr_offset.x / data->gyro_range);
-    v->y -= (data->gyr_offset.y / data->gyro_range);
-    v->z -= (data->gyr_offset.z / data->gyro_range);
+    v->x -= (data->gyr_offset.x / data->gyr_range);
+    v->y -= (data->gyr_offset.y / data->gyr_range);
+    v->z -= (data->gyr_offset.z / data->gyr_range);
 }
 
 

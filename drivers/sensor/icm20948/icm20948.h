@@ -123,6 +123,18 @@ enum icm20948_acc_avg_lp {
     ICM20948_ACC_AVG_512X = 0x07,
 };
 
+enum icm20948_gyro_avg_lp {
+    ICM20948_GYR_AVG_1X   = 0x00,
+    ICM20948_GYR_AVG_2X   = 0x01,
+    ICM20948_GYR_AVG_4X   = 0x02,
+    ICM20948_GYR_AVG_8X   = 0x03,
+    ICM20948_GYR_AVG_16X  = 0x04,
+    ICM20948_GYR_AVG_32X  = 0x05,
+    ICM20948_GYR_AVG_64X  = 0x06,
+    ICM20948_GYR_AVG_128X = 0x07,
+};
+
+
 enum icm20948_orientation {
     ICM20948_FLAT,
     ICM20948_FLAT_1,
@@ -287,7 +299,7 @@ struct icm20948_data {
 
     // Gyroscope calibration
     struct icm20948_vec3f gyr_offset;
-    float gyro_range;
+    float gyr_range;
 
     // Miscellaneous
     uint8_t buffer[20];
@@ -300,9 +312,13 @@ struct icm20948_data {
 int icm20948_init(const struct device *dev);
 void icm20948_auto_offsets(const struct device *dev);
 void icm20948_set_acc_offsets_minmax(const struct device *dev, float xMin, float xMax, float yMin, float yMax, float zMin, float zMax);
-void icm20948_set_acc_offsets(const struct device *dev, struct icm20948_vec3f offset);
+void icm20948_set_acc_offsets(const struct device *dev,
+                               float x_min, float x_max,
+                               float y_min, float y_max,
+                               float z_min, float z_max);
+
 struct icm20948_vec3f icm20948_get_acc_offsets(const struct device *dev);
-void icm20948_set_gyr_offsets(const struct device *dev, struct icm20948_vec3f offset);
+void icm20948_set_gyr_offsets(const struct device *dev, float x, float y, float z);
 struct icm20948_vec3f icm20948_get_gyr_offsets(const struct device *dev);
 uint8_t icm20948_whoami(const struct device *dev);
 void icm20948_enable_acc(const struct device *dev, bool enable);
