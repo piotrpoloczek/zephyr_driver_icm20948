@@ -1,13 +1,35 @@
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/drivers/i2c.h>
-#include "icm20948.h"
-#include "icm20948_reg.h"
+#define DT_DRV_COMPAT invensense_icm20948
 
+#include <zephyr/init.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/device.h>
+#include "icm20948.h"
+
+LOG_MODULE_REGISTER(icm20948, CONFIG_SENSOR_LOG_LEVEL);
+
+struct icm20948_config {
+	struct i2c_dt_spec i2c;
+};
+
+struct icm20948_data {
+	struct icm20948_vec3f acc_offset;
+	struct icm20948_vec3f acc_corr_factor;
+	struct icm20948_vec3f gyr_offset;
+	float acc_range_factor;
+	float gyr_range_factor;
+	uint8_t current_bank;
+	enum icm20948_fifo_type fifo_type;
+};
 
 bool icm20948_init(const struct device *dev)
 {
+    const struct icm20948_config *cfg = dev->config;
     struct icm20948_data *data = dev->data;
+
+    if (!device_is_ready(cfg->i2c.bus)) {
+        return false;
+    }
 
     data->current_bank = 0;
 
@@ -852,19 +874,19 @@ void icm20948_correct_gyro(struct icm20948_data *data, struct icm20948_vec3f *v)
 }
 
 
-static uint8_t current_bank = 0xFF;  // global or static in your driver
-
 void icm20948_switch_bank(const struct device *dev, uint8_t new_bank)
 {
-    if (new_bank != current_bank) {
-        current_bank = new_bank;
+    struct icm20948_data *data = dev->data;
+    const struct icm20948_config *cfg = dev->config;
+
+    if (new_bank != data->current_bank) {
+        data->current_bank = new_bank;
 
         uint8_t bank_reg = new_bank << 4;
-        const struct icm20948_config *cfg = dev->config;
-
-        i2c_reg_write_byte(cfg->i2c, cfg->i2c_addr, ICM20948_REG_BANK_SEL, bank_reg);
+        i2c_reg_write_byte_dt(&cfg->i2c, ICM20948_REG_BANK_SEL, bank_reg);
     }
 }
+
 
 void icm20948_write_register8(const struct device *dev, uint8_t bank, uint8_t reg, uint8_t val)
 {
@@ -1022,3 +1044,20 @@ void icm20948_enable_mag_data_read(const struct device *dev, uint8_t reg, uint8_
     k_sleep(K_MSEC(10));
 }
 
+
+
+
+static const struct icm20948_config icm20948_config_0 = {
+	.i2c = I2C_DT_SPEC_INST_GET(0),
+};
+
+static struct icm20948_data icm20948_data_0;
+
+DEVICE_DT_INST_DEFINE(0,
+		    icm20948_init,
+		    NULL,
+		    &icm20948_data_0,
+		    &icm20948_config_0,
+		    POST_KERNEL,
+		    CONFIG_SENSOR_INIT_PRIORITY,
+		    NULL);
