@@ -1013,6 +1013,21 @@ void icm20948_enable_mag_data_read(const struct device *dev, uint8_t reg, uint8_
 }
 
 
+void icm20948_mag_init(const struct device *dev) {
+    ARG_UNUSED(dev);
+}
+
+void icm20948_whoami(const struct device *dev) {
+    ARG_UNUSED(dev);
+}
+
+void icm20948_sleep(const struct device *dev, bool enable) {
+    ARG_UNUSED(dev);
+    ARG_UNUSED(enable);
+}
+
+
+
 
 
 static const struct icm20948_config icm20948_config_0 = {
