@@ -879,7 +879,7 @@ void icm20948_write_register8(const struct device *dev, uint8_t bank, uint8_t re
     const struct icm20948_config *cfg = dev->config;
 
     icm20948_switch_bank(dev, bank);
-    i2c_reg_write_byte(cfg->i2c, reg, val);
+    i2c_reg_write_byte_dt(&cfg->i2c, reg, val);
     k_busy_wait(5);  // delayMicroseconds(5)
 }
 
@@ -901,7 +901,7 @@ uint8_t icm20948_read_register8(const struct device *dev, uint8_t bank, uint8_t 
 
     icm20948_switch_bank(dev, bank);
 
-    int ret = i2c_reg_read_byte(cfg->i2c, reg, &value);
+    int ret = i2c_reg_read_byte_dt(&cfg->i2c, reg, &value);
     if (ret < 0) {
         LOG_ERR("Failed to read register 0x%02X", reg);
         return 0;
@@ -909,6 +909,7 @@ uint8_t icm20948_read_register8(const struct device *dev, uint8_t bank, uint8_t 
 
     return value;
 }
+
 
 int16_t icm20948_read_register16(const struct device *dev, uint8_t bank, uint8_t reg)
 {
