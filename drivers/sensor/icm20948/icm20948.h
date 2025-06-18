@@ -248,6 +248,8 @@ enum icm20948_orientation {
 #define AK09916_MAG_LSB             0.1495f
 #define ICM20948_I2C_MST_RST        0x02
 
+#endif /* ZEPHYR_DRIVERS_SENSOR_ICM20948_REGS_H_ */
+
 
 struct icm20948_config {
 	struct i2c_dt_spec i2c;
