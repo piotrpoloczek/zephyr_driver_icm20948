@@ -1013,18 +1013,59 @@ void icm20948_enable_mag_data_read(const struct device *dev, uint8_t reg, uint8_
 }
 
 
-void icm20948_mag_init(const struct device *dev) {
-    ARG_UNUSED(dev);
+bool icm20948_mag_init(const struct device *dev)
+{
+    bool init_success = false;
+    uint8_t tries = 0;
+
+    enable_i2c_master(dev);
+    reset_magnetometer(dev);
+    reset_icm20948(dev);
+    icm20948_sleep(dev, false);
+    icm20948_write_register8(dev, 2, ICM20948_ODR_ALIGN_EN, 1);
+
+    while (!init_success && tries < 10) {
+        k_msleep(10);
+        enable_i2c_master(dev);
+        k_msleep(10);
+
+        uint8_t whoami = icm20948_read_mag_id(dev); // Implement this to talk to AK09916 via I2C
+
+        if (whoami == AK09916_WHO_AM_I_1 || whoami == AK09916_WHO_AM_I_2) {
+            init_success = true;
+        } else {
+            icm20948_reset_i2c_master(dev);
+            tries++;
+        }
+    }
+
+    if (init_success) {
+        icm20948_set_mag_mode(dev, AK09916_CONT_MODE_100HZ); // You must implement this
+    }
+
+    return init_success;
 }
 
-void icm20948_whoami(const struct device *dev) {
-    ARG_UNUSED(dev);
+
+uint8_t icm20948_whoami(const struct device *dev)
+{
+    return icm20948_read_register8(dev, 0, ICM20948_WHO_AM_I);
 }
 
-void icm20948_sleep(const struct device *dev, bool enable) {
-    ARG_UNUSED(dev);
-    ARG_UNUSED(enable);
+
+void icm20948_sleep(const struct device *dev, bool enable)
+{
+    uint8_t reg = icm20948_read_register8(dev, 0, ICM20948_PWR_MGMT_1);
+
+    if (enable) {
+        reg |= ICM20948_SLEEP;
+    } else {
+        reg &= ~ICM20948_SLEEP;
+    }
+
+    icm20948_write_register8(dev, 0, ICM20948_PWR_MGMT_1, reg);
 }
+
 
 
 
