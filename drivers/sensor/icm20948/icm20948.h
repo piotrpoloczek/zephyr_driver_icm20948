@@ -40,13 +40,6 @@ enum ak09916_mode {
     AK09916_SELF_TEST        = 0x10
 };
 
-// WHO_AM_I expected value for ICM20948
-#define ICM20948_WHO_AM_I_ID 0xEA
-
-// WHO_AM_I expected values for AK09916
-#define AK09916_WHO_AM_I_1 0x09
-#define AK09916_WHO_AM_I_2 0x0A
-
 // Scale factors (raw -> SI units)
 #define ICM20948_ACCEL_SCALE_2G     (9.80665 / 16384.0)
 #define ICM20948_ACCEL_SCALE_4G     (9.80665 / 8192.0)
@@ -94,4 +87,8 @@ int icm20948_set_mag_mode(const struct device *dev, enum ak09916_mode mode);
 // Zephyr Sensor API
 int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan);
 int icm20948_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
+
+bool icm20948_mag_check_whoami(const struct device *dev);
+int icm20948_read_mag_register(const struct device *dev, uint8_t reg, uint8_t *val);
+
 

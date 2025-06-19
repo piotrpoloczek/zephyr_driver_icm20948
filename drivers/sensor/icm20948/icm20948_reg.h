@@ -117,3 +117,33 @@
 #define AK09916_ST1_DRDY             0x01
 #define AK09916_ST2_HOFL             0x08
 
+
+// I2C SLV4 (direct write/read to AK09916 registers)
+#define ICM20948_REG_I2C_SLV4_ADDR   0x07
+#define ICM20948_REG_I2C_SLV4_REG    0x08
+#define ICM20948_REG_I2C_SLV4_DO     0x09
+#define ICM20948_REG_I2C_SLV4_CTRL   0x0A
+#define ICM20948_REG_I2C_SLV4_DI     0x0B
+
+
+// #define AK09916_CONT_MODE_100HZ 0x08
+// #define AK09916_REG_CNTL2       0x31
+// #define AK09916_REG_ST1         0x10
+// #define AK09916_REG_ST2         0x18
+// #define AK09916_MAG_SCALE       0.15f
+
+
+#define AK09916_REG_CNTL2  0x31
+#define AK09916_REG_CNTL3  0x32
+#define AK09916_REG_WIA_1  0x00
+#define AK09916_REG_WIA_2  0x01
+#define AK09916_WHO_AM_I_1 0x4809
+#define AK09916_WHO_AM_I_2 0x0948
+
+#define ICM20948_WHO_AM_I          0x00  // WHO_AM_I register address
+#define ICM20948_WHO_AM_I_ID       0xEA  // Expected response from sensor
+
+#define AK09916_WHO_AM_I 0x09
+
+
+

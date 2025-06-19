@@ -48,12 +48,16 @@ static int icm20948_reset_chip(const struct device *dev)
 static int icm20948_chip_check(const struct device *dev)
 {
     uint8_t whoami = 0;
-    icm20948_switch_bank(dev, ICM20948_BANK0);
+
+    icm20948_switch_bank(dev, ICM20948_BANK_0);
     icm20948_read_register(dev, ICM20948_WHO_AM_I, &whoami);
+
     if (whoami != ICM20948_WHO_AM_I_ID) {
         LOG_ERR("Wrong WHO_AM_I: 0x%02X (expected 0x%02X)", whoami, ICM20948_WHO_AM_I_ID);
         return -ENODEV;
     }
+
+    LOG_INF("ICM20948 detected (WHO_AM_I = 0x%02X)", whoami);
     return 0;
 }
 
@@ -72,19 +76,32 @@ static int icm20948_sensor_init(const struct device *dev)
         return -ENODEV;
     }
 
-    // Disable sleep, enable accel/gyro
-    icm20948_switch_bank(dev, ICM20948_BANK0);
+    // Wake up and enable sensors
+    icm20948_switch_bank(dev, ICM20948_BANK_0);
     icm20948_write_register(dev, ICM20948_REG_PWR_MGMT_1, ICM20948_CLKSEL_AUTO);
     icm20948_write_register(dev, ICM20948_REG_PWR_MGMT_2, 0x00);
 
-    // Disable I2C master mode for bypass
-    icm20948_write_register(dev, ICM20948_REG_USER_CTRL, 0x00);
+    // Enable I2C master mode (required for AK09916)
+    icm20948_write_register(dev, ICM20948_REG_USER_CTRL, ICM20948_I2C_MST_EN);
+    k_msleep(10);
+
+    // Set default FS ranges in software (hardware is already default)
+    data->accel_fs = ICM20948_ACCEL_FS_2G;
+    data->gyro_fs  = ICM20948_GYRO_FS_250DPS;
+
+    // Optional: configure bypass if external I2C devices are needed
     icm20948_write_register(dev, ICM20948_REG_INT_PIN_CFG, ICM20948_BYPASS_EN);
 
-    LOG_INF("ICM20948 initialized");
+    // Initialize magnetometer (AK09916)
+    if (!icm20948_mag_init(dev)) {
+        LOG_WRN("Magnetometer not detected or not responding");
+    }
+
+    LOG_INF("ICM20948 initialized and ready");
 
     return 0;
 }
+
 
 
 static int16_t bytes_to_int16(uint8_t msb, uint8_t lsb) {
@@ -144,35 +161,74 @@ int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan)
 
     // --- Read magnetometer (AK09916) ---
     icm20948_switch_bank(dev, ICM20948_BANK_0);
-    uint8_t mag_buf[9];
-    ret = icm20948_read_registers(dev, ICM20948_REG_EXT_SLV_SENS_DATA_00, mag_buf, sizeof(mag_buf));
-    if (ret < 0) {
-        LOG_ERR("Failed to read magnetometer registers");
-        k_mutex_unlock(&data->lock);
-        return ret;
-    }
 
-    LOG_DBG("AK09916 ST1 = 0x%02X ST2 = 0x%02X", mag_buf[0], mag_buf[8]);
 
-    if (!(mag_buf[0] & AK09916_ST1_DRDY)) {
-        LOG_WRN("Magnetometer data not ready");
+    uint8_t st1 = 0;
+    ret = icm20948_read_mag_register(dev, AK09916_REG_ST1, &st1);
+    if (ret < 0 || !(st1 & AK09916_ST1_DRDY)) {
+        LOG_WRN("Magnetometer data not ready (manual)");
         k_mutex_unlock(&data->lock);
         return -EAGAIN;
     }
 
-    if (mag_buf[8] & AK09916_ST2_HOFL) {
+    uint8_t mag_raw[6];
+    for (int i = 0; i < 6; i++) {
+        icm20948_read_mag_register(dev, AK09916_REG_HXL + i, &mag_raw[i]);
+    }
+
+    uint8_t st2 = 0;
+    icm20948_read_mag_register(dev, AK09916_REG_ST2, &st2);
+    if (st2 & AK09916_ST2_HOFL) {
         LOG_WRN("Magnetometer overflow");
         k_mutex_unlock(&data->lock);
         return -EIO;
     }
 
-    int16_t mx = (int16_t)(mag_buf[2] << 8 | mag_buf[1]);
-    int16_t my = (int16_t)(mag_buf[4] << 8 | mag_buf[3]);
-    int16_t mz = (int16_t)(mag_buf[6] << 8 | mag_buf[5]);
+    int16_t mx = (int16_t)(mag_raw[1] << 8 | mag_raw[0]);
+    int16_t my = (int16_t)(mag_raw[3] << 8 | mag_raw[2]);
+    int16_t mz = (int16_t)(mag_raw[5] << 8 | mag_raw[4]);
 
     data->mag[0] = mx * AK09916_MAG_SCALE;
     data->mag[1] = my * AK09916_MAG_SCALE;
     data->mag[2] = mz * AK09916_MAG_SCALE;
+
+
+    // uint8_t mag_buf[9];
+    // ret = icm20948_read_registers(dev, ICM20948_REG_EXT_SLV_SENS_DATA_00, mag_buf, sizeof(mag_buf));
+    
+    // if (ret < 0) {
+    //     LOG_ERR("Failed to read magnetometer registers");
+    //     k_mutex_unlock(&data->lock);
+    //     return ret;
+    // }
+
+    // LOG_DBG("AK09916 ST1 = 0x%02X ST2 = 0x%02X", mag_buf[0], mag_buf[8]);
+
+    // if (!(mag_buf[0] & AK09916_ST1_DRDY)) {
+    //     LOG_WRN("Magnetometer data not ready");
+    //     k_mutex_unlock(&data->lock);
+    //     return -EAGAIN;
+    // }
+
+    // if (mag_buf[8] & AK09916_ST2_HOFL) {
+    //     LOG_WRN("Magnetometer overflow");
+    //     k_mutex_unlock(&data->lock);
+    //     return -EIO;
+    // }
+
+    // int16_t mx = (int16_t)(mag_buf[2] << 8 | mag_buf[1]);
+    // int16_t my = (int16_t)(mag_buf[4] << 8 | mag_buf[3]);
+    // int16_t mz = (int16_t)(mag_buf[6] << 8 | mag_buf[5]);
+
+    // data->mag[0] = mx * AK09916_MAG_SCALE;
+    // data->mag[1] = my * AK09916_MAG_SCALE;
+    // data->mag[2] = mz * AK09916_MAG_SCALE;
+
+    LOG_DBG("ST1: 0x%02X", st1);
+
+    LOG_DBG("Accel raw: %.2f %.2f %.2f", data->accel[0], data->accel[1], data->accel[2]);
+    LOG_DBG("Gyro raw: %.2f %.2f %.2f", data->gyro[0], data->gyro[1], data->gyro[2]);
+    LOG_DBG("Mag raw: %.2f %.2f %.2f", data->mag[0], data->mag[1], data->mag[2]);
 
     k_mutex_unlock(&data->lock);
     return 0;
@@ -245,64 +301,184 @@ int icm20948_channel_get(const struct device *dev,
 }
 
 
+int icm20948_write_mag_register(const struct device *dev, uint8_t reg, uint8_t val)
+{
+    icm20948_switch_bank(dev, ICM20948_BANK_3);
+
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_ADDR, AK09916_I2C_ADDR);       // Write mode
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_REG, reg);                     // Target reg
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_DO, val);                      // Data
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_CTRL, 0x80);                   // Enable
+
+    k_msleep(10); // Wait for transaction to complete
+
+    return 0;
+}
+
+int icm20948_read_mag_register(const struct device *dev, uint8_t reg, uint8_t *val)
+{
+    icm20948_switch_bank(dev, ICM20948_BANK_3);
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_ADDR, AK09916_I2C_ADDR | 0x80); // Read
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_REG, reg);
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV4_CTRL, 0x81);  // 1 byte
+    k_msleep(10);
+
+    icm20948_switch_bank(dev, ICM20948_BANK_0);
+    return icm20948_read_register(dev, ICM20948_REG_I2C_SLV4_DI, val);
+}
+
+
 bool icm20948_mag_init(const struct device *dev)
 {
-    bool init_success = false;
-    uint8_t tries = 0;
-
+    // 1. Enable I2C master mode
     icm20948_switch_bank(dev, ICM20948_BANK_0);
     icm20948_write_register(dev, ICM20948_REG_USER_CTRL, ICM20948_I2C_MST_EN);
     k_msleep(10);
 
+    // 2. Set I2C master clock (to ~345.6 kHz)
     icm20948_switch_bank(dev, ICM20948_BANK_3);
-    icm20948_write_register(dev, ICM20948_REG_I2C_MST_CTRL, 0x07);  // 345.6 kHz
+    icm20948_write_register(dev, ICM20948_REG_I2C_MST_CTRL, 0x07);
     k_msleep(10);
 
-    while (!init_success && tries < 10) {
-        // Read AK09916 WHO_AM_I
-        icm20948_switch_bank(dev, ICM20948_BANK_3);
-        icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_ADDR, AK09916_I2C_ADDR | 0x80); // read
-        icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_REG, AK09916_REG_WHO_AM_I);
-        icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_CTRL, 0x81); // 1 byte
+    // 3. Reset the magnetometer
+    ak09916_reset(dev);
+    k_msleep(100);
 
-        k_msleep(20); // give time for I2C transaction
-
-        icm20948_switch_bank(dev, ICM20948_BANK_0);
-        uint8_t whoami = 0;
-        icm20948_read_register(dev, ICM20948_REG_EXT_SLV_SENS_DATA_00, &whoami);
-
-        if (whoami == AK09916_WHO_AM_I_1 || whoami == AK09916_WHO_AM_I_2) {
-            init_success = true;
-        } else {
-            tries++;
-            k_msleep(10);
-        }
-    }
-
-    if (init_success) {
-        icm20948_set_mag_mode(dev, AK09916_CONT_MODE_100HZ);
-        LOG_INF("AK09916 magnetometer initialized.");
-    } else {
+    // 4. Check WHO_AM_I
+    if (!icm20948_mag_check_whoami(dev)) {
         LOG_ERR("AK09916 WHO_AM_I failed");
+        return false;
     }
 
-    return init_success;
+    LOG_INF("AK09916 magnetometer detected");
+
+    // 5. Set continuous measurement mode (100 Hz)
+    icm20948_set_mag_mode(dev, AK09916_CONT_MODE_100HZ);
+    k_msleep(20);  // Give AK09916 time to start first conversion
+
+    uint8_t mode_check = 0;
+    icm20948_read_mag_register(dev, AK09916_REG_CNTL2, &mode_check);
+    LOG_DBG("AK09916 mode set: 0x%02X", mode_check);  // Expect 0x08
+
+    // ✅ Additional optional debug: check ST1
+    uint8_t st1_debug = 0;
+    icm20948_read_mag_register(dev, AK09916_REG_ST1, &st1_debug);
+    LOG_DBG("AK09916 ST1 after init: 0x%02X", st1_debug);
+
+
+    return true;
 }
+
+
+
+// bool icm20948_mag_init(const struct device *dev)
+// {
+//     // 1. Enable I2C master mode
+//     icm20948_switch_bank(dev, ICM20948_BANK_0);
+//     icm20948_write_register(dev, ICM20948_REG_USER_CTRL, ICM20948_I2C_MST_EN);
+//     k_msleep(10);
+
+//     // 2. Set I2C master clock (to ~345.6 kHz)
+//     icm20948_switch_bank(dev, ICM20948_BANK_3);
+//     icm20948_write_register(dev, ICM20948_REG_I2C_MST_CTRL, 0x07);
+//     k_msleep(10);
+
+//     // 3. Reset the magnetometer
+//     ak09916_reset(dev);
+//     k_msleep(100);
+
+//     // 4. Check WHO_AM_I
+//     if (!icm20948_mag_check_whoami(dev)) {
+//         LOG_ERR("AK09916 WHO_AM_I failed");
+//         return false;
+//     }
+
+//     LOG_INF("AK09916 magnetometer detected");
+
+//     // 5. Set continuous measurement mode (100 Hz)
+//     icm20948_set_mag_mode(dev, AK09916_CONT_MODE_100HZ);
+//     k_msleep(10);
+
+//     // 6. Optional: set up SLV0 to automatically fetch 9 bytes (ST1 + XYZ + ST2)
+//     // Comment this out if you're using full manual mode only
+//     // icm20948_setup_auto_read_mag(dev);
+
+//     return true;
+// }
+
 
 int icm20948_set_mag_mode(const struct device *dev, enum ak09916_mode mode)
 {
-    icm20948_switch_bank(dev, ICM20948_BANK_3);
-
-    // Write mode to CNTL2
-    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_ADDR, AK09916_I2C_ADDR); // write
-    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_REG, AK09916_REG_CNTL2);
-    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_DO, mode);
-    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_CTRL, 0x81); // 1 byte
-
-    k_msleep(10);
-    return 0;
+    return icm20948_write_mag_register(dev, AK09916_REG_CNTL2, mode);
 }
 
+
+
+// int icm20948_set_mag_mode(const struct device *dev, enum ak09916_mode mode)
+// {
+//     icm20948_switch_bank(dev, ICM20948_BANK_3);
+
+//     // Write to CNTL2 register to set mode
+//     icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_ADDR, AK09916_I2C_ADDR); // Write
+//     icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_REG, AK09916_REG_CNTL2);
+//     icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_DO, mode);
+//     icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_CTRL, 0x81); // Enable, 1 byte write
+
+//     k_msleep(10);
+
+//     // Disable slave write slot after execution (optional cleanup)
+//     icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_CTRL, 0x00);
+
+//     return 0;
+// }
+
+
+void ak09916_reset(const struct device *dev)
+{
+    icm20948_write_mag_register(dev, AK09916_REG_CNTL3, 0x01);
+    k_msleep(100);
+}
+
+
+
+bool icm20948_mag_check_whoami(const struct device *dev)
+{
+    uint8_t whoami = 0;
+
+    icm20948_switch_bank(dev, ICM20948_BANK_3);
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_ADDR, AK09916_I2C_ADDR | 0x80); // read
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_REG, AK09916_REG_WHO_AM_I);
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_CTRL, 0x81); // enable, 1 byte
+
+    k_msleep(20);
+
+    icm20948_switch_bank(dev, ICM20948_BANK_0);
+    icm20948_read_register(dev, ICM20948_REG_EXT_SLV_SENS_DATA_00, &whoami);
+
+    // if (whoami == AK09916_WHO_AM_I_1 || whoami == AK09916_WHO_AM_I_2) {
+    //     return true;
+    // }
+        
+
+    if (whoami == AK09916_WHO_AM_I) {
+        return true;
+    }
+    LOG_ERR("AK09916 WHO_AM_I failed: 0x%02X", whoami);
+    return false;
+
+
+    // LOG_ERR("AK09916 WHO_AM_I failed: 0x%02X", whoami);
+    // return false;
+}
+
+
+
+void icm20948_setup_auto_read_mag(const struct device *dev) {
+    icm20948_switch_bank(dev, ICM20948_BANK_3);
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_ADDR, AK09916_I2C_ADDR | 0x80);  // Read mode
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_REG, AK09916_REG_ST1);
+    icm20948_write_register(dev, ICM20948_REG_I2C_SLV0_CTRL, 0x89); // Enable, 9 bytes
+}
 
 
 static const struct sensor_driver_api icm20948_api_funcs = {
