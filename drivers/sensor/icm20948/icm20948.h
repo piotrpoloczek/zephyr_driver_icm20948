@@ -89,6 +89,6 @@ int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan);
 int icm20948_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
 
 bool icm20948_mag_check_whoami(const struct device *dev);
-int icm20948_read_mag_register(const struct device *dev, uint8_t reg, uint8_t *val);
+// int icm20948_read_mag_register(const struct device *dev, uint8_t reg, uint8_t *val);
 
 
