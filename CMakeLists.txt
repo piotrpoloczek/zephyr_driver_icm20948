@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 3.20.0)
-find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(icm20948)
+# SPDX-License-Identifier: Apache-2.0
 
-add_subdirectory(drivers/sensor/icm20948)
+set(ICM20948_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE PATH "ICM20948 module root directory")
+
+add_subdirectory(drivers/sensor/tdk)
+
+zephyr_include_directories(drivers/sensor/tdk)

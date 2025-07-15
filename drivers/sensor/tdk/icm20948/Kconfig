@@ -1,0 +1,108 @@
+# ICM-20948 9-axis motion sensor configuration
+# Copyright (c) 2025
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ICM20948
+	bool "ICM-20948 9-axis motion sensor"
+	default y
+	depends on DT_HAS_INVENSENSE_ICM20948_ENABLED
+	select I2C
+	help
+	  Enable driver for ICM-20948 9-axis motion sensor.
+	  This sensor includes 3-axis accelerometer, 3-axis gyroscope,
+	  3-axis magnetometer (AK09916), and temperature sensor.
+	  Only I2C interface is supported.
+
+if ICM20948
+
+config ICM20948_ENABLE_TEMP
+	bool "Enable temperature sensor"
+	default y
+	help
+	  Enable temperature sensor support for ICM-20948.
+
+config ICM20948_ENABLE_MAGN
+	bool "Enable magnetometer"
+	default y
+	help
+	  Enable magnetometer (AK09916) support for ICM-20948.
+
+choice ICM20948_TRIGGER_MODE
+	prompt "Trigger mode"
+	default ICM20948_TRIGGER_NONE
+	help
+	  Specify the type of triggering to be used by the driver.
+
+config ICM20948_TRIGGER_NONE
+	bool "No trigger"
+
+config ICM20948_TRIGGER_GLOBAL_THREAD
+	bool "Use global thread"
+	depends on GPIO
+	select ICM20948_TRIGGER
+
+config ICM20948_TRIGGER_OWN_THREAD
+	bool "Use own thread"
+	depends on GPIO
+	select ICM20948_TRIGGER
+
+endchoice
+
+config ICM20948_TRIGGER
+	bool
+
+config ICM20948_THREAD_PRIORITY
+	int "Thread priority"
+	depends on ICM20948_TRIGGER_OWN_THREAD
+	default 10
+	help
+	  Priority of thread used by the driver to handle interrupts.
+
+config ICM20948_THREAD_STACK_SIZE
+	int "Thread stack size"
+	depends on ICM20948_TRIGGER_OWN_THREAD
+	default 1024
+	help
+	  Stack size of thread used by the driver to handle interrupts.
+
+config ICM20948_SENSORHUB
+	bool "Enable sensor hub functionality"
+	default n
+	help
+	  Enable sensor hub functionality to read external sensors
+	  connected to the ICM-20948's auxiliary I2C bus.
+
+config ICM20948_FIFO
+	bool "Enable FIFO support"
+	default n
+	help
+	  Enable FIFO buffer support for batch data collection.
+
+config ICM20948_DMP
+	bool "Enable Digital Motion Processor (DMP)"
+	default n
+	help
+	  Enable DMP functionality for advanced motion processing.
+	  Note: This requires additional firmware and memory.
+
+config ICM20948_TRIGGER_WOM
+	bool "Enable Wake-on-Motion trigger support"
+	depends on ICM20948_TRIGGER
+	help
+	  Enable Wake-on-Motion trigger support for low-power applications.
+  
+config ICM20948_TRIGGER_FIFO
+	bool "Enable FIFO trigger support"
+	depends on ICM20948_TRIGGER
+	help
+	  Enable FIFO overflow and watermark trigger support.
+  
+config ICM20948_WOM_THRESHOLD_DEFAULT
+	int "Default Wake-on-Motion threshold"
+	depends on ICM20948_TRIGGER_WOM
+	default 50
+	range 0 255
+	help
+	  Default threshold value for Wake-on-Motion detection.
+
+endif # ICM20948
