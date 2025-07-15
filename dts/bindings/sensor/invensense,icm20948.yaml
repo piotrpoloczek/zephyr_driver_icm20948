@@ -1,7 +1,71 @@
-description: ICM20948 9-axis motion sensor
+# Copyright (c) 2024
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Invensense ICM-20948 9-axis IMU (gyroscope, accelerometer, and magnetometer).
+  Supports I2C communication interface.
+
 compatible: "invensense,icm20948"
-include: ["i2c-device.yaml"]
+
+include: [sensor-device.yaml, i2c-device.yaml]
 
 properties:
-  reg:
-    required: true
+  int-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      The INT signal. The default configuration is active-high, push-pull.
+      The property value should ensure the flags properly describe the
+      signal that is presented to the driver.
+
+  fsync-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      The FSYNC signal for external synchronization, often used for
+      Electronic Image Stabilization (EIS).
+
+  accel-fs:
+    type: int
+    default: 8
+    description: |
+      Default full scale of accelerometer. (Unit - g)
+    enum:
+      - 2
+      - 4
+      - 8
+      - 16
+
+  gyro-fs:
+    type: int
+    default: 2000
+    description: |
+      Default full scale of gyroscope. (Unit - dps)
+    enum:
+      - 250
+      - 500
+      - 1000
+      - 2000
+
+  magn-mode:
+    type: int
+    default: 4 # Continuous measurement mode 2 (20Hz)
+    description: |
+      Magnetometer (AK09916) operating mode.
+    enum:
+      - 0  # Power-down
+      - 1  # Single measurement
+      - 2  # Continuous measurement mode 1 (10Hz)
+      - 4  # Continuous measurement mode 2 (20Hz)
+      - 6  # Continuous measurement mode 3 (50Hz)
+      - 8  # Continuous measurement mode 4 (100Hz)
+      - 16 # Self-test mode
+
+  byodr:
+    type: int
+    required: false
+    description: |
+      Specifies the Bypass ODR.
+    enum:
+      - 0 # Bypass ODR is 1.1 kHz
+      - 1 # Bypass ODR is 1.125 kHz

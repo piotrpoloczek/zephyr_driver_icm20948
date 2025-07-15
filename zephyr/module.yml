@@ -1,5 +1,4 @@
 name: icm20948
-
 build:
   cmake: .
   kconfig: Kconfig
